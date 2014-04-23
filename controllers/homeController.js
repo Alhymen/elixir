@@ -1,13 +1,10 @@
 var mongo = require('mongodb');
+var ControllerCore = require('./controllerCore.js');
 
-function homeController() { }
+function HomeController() { }
 
-homeController.prototype = {
-	_contextService: null,
-	Init: function (contextService) {
-		this._contextService = contextService;
-	},
-	index: function () {
+HomeController.prototype = ControllerCore.extend ({
+	index: function (args, response, isAjax) {
 		var MongoClient = mongo.MongoClient;
 		var that = this;
 		var Db = mongo.Db,
@@ -15,8 +12,9 @@ homeController.prototype = {
 			Server = mongo.Server;
 
 		var myCollection;
-
-		var db = MongoClient.connect("mongodb://localhost:" + Connection.DEFAULT_PORT + "/vmedias", function (err, db) {
+        var result;
+        var paramsTpl={nom:"Jojo", prenom:args.prenom||"la frite"};
+/*		var db = MongoClient.connect("mongodb://localhost:" + Connection.DEFAULT_PORT + "/vmedias", function (err, db) {
 			if (err)
 				throw err;
 			console.log("connecter avec MongoDB !");
@@ -29,12 +27,14 @@ homeController.prototype = {
 				that._contextService.requestService.View(results[0].nom);
 			});
 		});
-
-		
-	},
-	detail: function () {
-		
-	}
-}
-
-module.exports = new homeController();
+*/
+        if (!isAjax) {
+            result = this.contextService.templateService.DisplayViewHTML(this.GetTemplatePath("index"), paramsTpl);
+        }
+        else{
+            result = this.contextService.templateService.DisplayViewJSON(paramsTpl);
+        }
+        this.RenderView (result, response);
+    }
+});
+module.exports = new HomeController();

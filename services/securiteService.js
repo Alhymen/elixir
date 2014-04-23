@@ -4,4 +4,4 @@ SecuriteService.prototype = {
 
 }
 
-module.exports = SecuriteService;
+module.exports = new SecuriteService();

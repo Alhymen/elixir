@@ -1,70 +1,40 @@
-var Url = require('url')
-var Vm = require('vm');
-var Parallel = require('../services/parallelService');
-var SecuriteService = require("../services/securiteService");
-var ErrorService = require("../services/errorService");
-var RequestService = require("../services/requestService");
-var TemplateService = require("../services/templateService");
-var ContextService = require("../services/contextService");
-
+var Url = require('url');
 function Controller() { }
- 
+
 // Principal controller
 // Parses url and chooses the good controller to call
 Controller.prototype = {
 	// First method to call in order to configure the master controller
-	Init: function () {
-		this.queue = [];
+	Init: function (contextService) {
+        this.contextService=contextService;
+        this.controllers = {};
+        var fs = require("fs"),
+            dossierControllers = "./controllers";
+
+        var directoryControllers = fs.readdirSync(dossierControllers);
+        for (var i in directoryControllers) {
+            var controllerName = directoryControllers[i].replace (".js", "");
+            if (controllerName != "controller") {
+                this.controllers[controllerName] = require("./" + directoryControllers[i]);
+                this.controllers[controllerName].Init(controllerName.replace ("Controller", ""), contextService);
+            }
+        }
 	},
 	// Analyses and Executes the request of the client
 	ExecuteRequest: function (request, response) {
-		// We ommit the favicon
-		if (request.url == "/favicon.ico") {
-			response.end();
-			return;
-		}
+        // We ommit the favicon
+        if (request.url == "/favicon.ico") {
+            response.end();
+            return;
+        }
+		var req,
+            // We Get the controller name, the action name and the arguments
+            url = Url.parse(request.url, true),
+            args = url.query;
 
-		var that = this;
-		var reqVm;
-
-		var vmContext = null;
-
-
-
-		Parallel.RunNew(function () {
-
-			// We Get the controller name, the action name and the arguments
-			var url = Url.parse(request.url, true);
-
-			var contextService = new ContextService();
-			contextService.Init(new SecuriteService(), new ErrorService(), new RequestService(), new TemplateService());
-			contextService.requestService.Init(url.pathname, response);
-
-			var req = contextService.requestService.GetControllerAndAction();
-			var args = url.query;
-
-			// We generate the string for the call of the action of a contreoler
-			reqVm = "resp = controller." + req.Action + "(";
-			for (var arg in args) {
-				reqVm += "'" + args[arg] + "',";
-			}
-			if (reqVm[reqVm.length - 1] == ',')
-				reqVm = reqVm.substr(0, reqVm.length - 1);
-			reqVm += ");";
-
-			// The context for the execution of the action
-			vmContext = {
-				resp: '',
-				controller: require("./" + req.Controller + "Controller")
-			};
-
-			vmContext.controller.Init(contextService);
-
-		}).Continue(function () {
-			// We run the action
-			Vm.runInNewContext(reqVm, vmContext);
-		});
+        // parsing to isolate controller and action names
+        req = this.contextService.requestService.GetControllerAndAction(url.pathname);
+        this.controllers[req.controller+"Controller"][req.action](args, response, req.ajax);
 	}
-}
-
+};
 module.exports = new Controller();
