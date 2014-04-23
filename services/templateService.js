@@ -3,7 +3,7 @@ var underscore = require("underscore"),
     url = require("url"),
     fs = require("fs");
 
-function TemplateService(paramsTemplate) {
+function TemplateService() {
 }
 
 TemplateService.prototype = {
